@@ -1,0 +1,104 @@
+import pygame
+import sys
+import math
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions and colors
+WIDTH, HEIGHT = 800, 600
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+WHITE = (255, 255, 255)
+GRAVITY = 0.5
+FRICTION = 0.99
+
+# Set up screen
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Physics Simulation")
+
+# Ball properties
+ball_radius = 20
+ball_color = RED
+ball_pos = [WIDTH // 2, HEIGHT // 2]
+ball_velocity = [0, 0]
+dragging = False
+
+# Set up font for text display
+font = pygame.font.SysFont("Arial", 20)
+
+# Function to calculate the magnitude of a vector
+def vector_magnitude(vec):
+    return math.hypot(vec[0], vec[1])
+
+# Main game loop
+clock = pygame.time.Clock()
+
+while True:
+    screen.fill(BLACK)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        # Mouse down to drag the ball
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            dist = math.hypot(mouse_x - ball_pos[0], mouse_y - ball_pos[1])
+            if dist < ball_radius:
+                dragging = True
+                # Start tracking the drag point
+                drag_start_pos = [mouse_x, mouse_y]
+                drag_velocity = [0, 0]
+
+        # Mouse up to release the ball
+        elif event.type == pygame.MOUSEBUTTONUP:
+            dragging = False
+            # Set the velocity based on the drag distance and speed
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            drag_vector = [mouse_x - drag_start_pos[0], mouse_y - drag_start_pos[1]]
+            drag_velocity = [drag_vector[0] * 0.1, drag_vector[1] * 0.1]
+            ball_velocity = drag_velocity
+
+    # Update ball position and velocity
+    if not dragging:
+        # Apply gravity and friction
+        ball_velocity[1] += GRAVITY
+        ball_velocity[0] *= FRICTION
+        ball_velocity[1] *= FRICTION
+        ball_pos[0] += ball_velocity[0]
+        ball_pos[1] += ball_velocity[1]
+
+        # Check for collisions with walls
+        if ball_pos[0] <= ball_radius or ball_pos[0] >= WIDTH - ball_radius:
+            ball_velocity[0] = -ball_velocity[0]
+            ball_pos[0] = max(ball_radius, min(WIDTH - ball_radius, ball_pos[0]))
+
+        if ball_pos[1] <= ball_radius or ball_pos[1] >= HEIGHT - ball_radius:
+            ball_velocity[1] = -ball_velocity[1]
+            ball_pos[1] = max(ball_radius, min(HEIGHT - ball_radius, ball_pos[1]))
+
+    # Draw the ball
+    pygame.draw.circle(screen, ball_color, (int(ball_pos[0]), int(ball_pos[1])), ball_radius)
+
+    # Draw the line indicating drag force when dragging
+    if dragging:
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        pygame.draw.line(screen, WHITE, (ball_pos[0], ball_pos[1]), (mouse_x, mouse_y), 2)
+
+    # Calculate force power (magnitude of velocity)
+    force_power = vector_magnitude(ball_velocity)
+
+    # Display physics data
+    velocity_text = f"Velocity: ({ball_velocity[0]:.2f}, {ball_velocity[1]:.2f})"
+    speed_text = f"Speed: {force_power:.2f} px/s"
+    force_text = f"Force Power: {force_power:.2f} N"
+    text_position = (10, 10)
+    for text in [velocity_text, speed_text, force_text]:
+        text_surface = font.render(text, True, WHITE)
+        screen.blit(text_surface, text_position)
+        text_position = (10, text_position[1] + 30)
+
+    # Update the display
+    pygame.display.flip()
+    clock.tick(60)
